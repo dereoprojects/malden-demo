@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: madlen-web
+    environment:
+      NODE_ENV: development
+      # OpenTelemetry exporter will point at the Jaeger service (OTLP HTTP)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      # Your OpenRouter key gets passed in from the host env or a .env file
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    ports:
+      - "3000:3000"
+    # Mount your code for hot reload; keep node_modules inside the container
+    volumes:
+      - .:/app
+      - pnpm-store:/root/.pnpm-store
+      - node_modules:/app/node_modules
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: madlen-jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    # defaults are fine for local dev
+
+volumes:
+  pnpm-store:
+  node_modules:

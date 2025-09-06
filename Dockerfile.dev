@@ -1,0 +1,14 @@
+# Dockerfile.dev
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+# Install deps first (layer cache)
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install
+
+# Default command runs the dev server on all interfaces
+CMD ["pnpm","dev","-p","3000","-H","0.0.0.0"]
