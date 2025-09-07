@@ -19,8 +19,7 @@ import { Check, Image as ImageIcon, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFreeModels } from "@/lib/llm/use-free-models";
-
-type Item = { id: string; label: string; supportsImages?: boolean };
+import { ModelSelectItem } from "@/lib/schemas";
 
 
 export function ModelSelect({
@@ -28,11 +27,11 @@ export function ModelSelect({
   onChange,
 }: {
   value: string | null;
-  onChange: (v: Item) => void;
+  onChange: (v: ModelSelectItem) => void;
 }) {
   const { models, loading, error } = useFreeModels();
 
-  const baseList: Item[] =
+  const baseList: ModelSelectItem[] =
     !error && !loading && Array.isArray(models) && models.length > 0
       ? models
       : [];

@@ -10,6 +10,7 @@ import { useMessages } from '@/lib/chat/use-messages';
 import { useStreamTurn } from '@/lib/chat/use-stream-turn';
 import { useFreeModels } from '@/lib/llm/use-free-models';
 import { toast } from 'sonner';
+import { Session } from '@/lib/schemas';
 
 export function ChatLayout() {
   const [model, setModel] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export function ChatLayout() {
 
   const effectiveModel = model || active?.model || null;
   const isNewSessionActive = activeId === 'new';
-  const handleSessionSelect = (session: any) => {
+  const handleSessionSelect = (session: Session | 'new') => {
     if (session === 'new') {
       setActiveId('new');
       setActive(null);

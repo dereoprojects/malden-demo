@@ -1,26 +1,7 @@
 import { NextRequest } from "next/server";
+import { ORModelSchema, ModelsResponseSchema, ErrorResponseSchema, ORModel, FreeModel } from "@/lib/schemas";
 
-type Pricing = Partial<{
-  prompt: string;
-  completion: string;
-  request: string;
-  image: string;
-  web_search: string;
-  input_cache_read?: string | null;
-  input_cache_write?: string | null;
-}>;
-
-type ORModel = {
-  id: string;
-  name?: string;
-  pricing?: Pricing;
-  architecture?: {
-    input_modalities?: string[];
-  };
-  canonical_slug?: string;
-};
-
-function isFreeModel(m: ORModel) {
+function isFreeModel(m: ORModel): boolean {
   const p = m.pricing || {};
   const bySuffix = /:free$/i.test(m.id);
   const byToken =
@@ -43,21 +24,23 @@ export async function GET(_req: NextRequest) {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     return new Response(
-      JSON.stringify({
-        error: "failed_models_list",
-        status: res.status,
+      JSON.stringify(ErrorResponseSchema.parse({
+        code: "failed_models_list",
+        message: `Failed to fetch models: ${res.status}`,
         detail: text,
-      }),
+      })),
       { status: 502, headers: { "Content-Type": "application/json" } }
     );
   }
 
   const json = await res.json();
-  const models: ORModel[] = Array.isArray(json?.data) ? json.data : [];
+  const models: ORModel[] = Array.isArray(json?.data) 
+    ? json.data.map((m: unknown) => ORModelSchema.parse(m)) 
+    : [];
 
-  const free = models
+  const free: FreeModel[] = models
     .filter(isFreeModel)
-    .map((m) => {
+    .map((m: ORModel): FreeModel => {
       const modalities: string[] = m?.architecture?.input_modalities ?? [];
       const supportsImages = modalities.includes("image");
 
@@ -67,8 +50,10 @@ export async function GET(_req: NextRequest) {
         supportsImages,
       };
     })
-    .filter((m, i, a) => a.findIndex((x) => x.id === m.id) === i)
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .filter((m: FreeModel, i: number, a: FreeModel[]) => 
+      a.findIndex((x: FreeModel) => x.id === m.id) === i
+    )
+    .sort((a: FreeModel, b: FreeModel) => a.label.localeCompare(b.label));
 
-  return Response.json({ data: free });
+  return Response.json(ModelsResponseSchema.parse({ data: free }));
 }

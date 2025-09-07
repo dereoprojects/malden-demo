@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { db, type Session } from '@/lib/db/dexie';
+import { db } from '@/lib/db/dexie';
+import { Session } from '@/lib/schemas';
 
 export function useSessions(activeId?: string | null) {
   const [sessions, setSessions] = useState<Session[]>([]);

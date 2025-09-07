@@ -5,12 +5,38 @@ import {
   parseORFailure,
 } from "@/lib/llm/openrouter";
 import { trace } from "@opentelemetry/api";
+import { ChatStreamRequestSchema, ErrorResponseSchema, ChatStreamEvent } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const { model, messages } = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(
+      JSON.stringify(ErrorResponseSchema.parse({
+        code: "invalid_json",
+        message: "Invalid JSON in request body",
+      })),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const validation = ChatStreamRequestSchema.safeParse(body);
+  if (!validation.success) {
+    return new Response(
+      JSON.stringify(ErrorResponseSchema.parse({
+        code: "validation_error",
+        message: "Invalid request format",
+        detail: validation.error.issues,
+      })),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const { model, messages } = validation.data;
 
   try {
     const span = trace.getActiveSpan();
@@ -20,10 +46,9 @@ export async function POST(req: NextRequest) {
           ? messages[messages.length - 1].content
           : null;
 
-      var lastText =
-        lastTextContent.find((item: any) => item.type === "text")?.text ||
-        "N/A";
-      var lastImage = lastTextContent.find((item: any) => item.type === "image_url")
+      const textPart = lastTextContent?.find((item) => item.type === "text");
+      let lastText = textPart?.text || "N/A";
+      const lastImage = lastTextContent?.find((item) => item.type === "image_url")
         ? "true"
         : "false";
       if (lastText.length > 512) lastText = lastText.slice(0, 509) + "...";
@@ -37,20 +62,11 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.OPENROUTER_API_KEY) {
     return new Response(
-      JSON.stringify({
+      JSON.stringify(ErrorResponseSchema.parse({
         code: "missing_key",
         message: "OPENROUTER_API_KEY is not set on the server.",
-      }),
+      })),
       { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-  if (!model || !Array.isArray(messages) || messages.length === 0) {
-    return new Response(
-      JSON.stringify({
-        code: "bad_request",
-        message: "model and messages are required.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -58,7 +74,7 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: any) => {
+      const send = (obj: ChatStreamEvent) => {
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       };
 
@@ -120,7 +136,7 @@ export async function POST(req: NextRequest) {
 
         send({ type: "completed" });
         controller.close();
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (req.signal.aborted) {
           send({
             type: "llm_error",
@@ -131,7 +147,7 @@ export async function POST(req: NextRequest) {
           send({
             type: "llm_error",
             code: "network",
-            message: err?.message || "Network error.",
+            message: err instanceof Error ? err.message : "Network error.",
           });
         }
         controller.close();

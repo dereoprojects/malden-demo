@@ -5,8 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeHighlight from "rehype-highlight";
-
-type Props = { content: string; isStreaming?: boolean };
+import { MarkdownProps } from "@/lib/schemas";
 
 const schema = {
   ...defaultSchema,
@@ -18,7 +17,7 @@ const schema = {
   },
 };
 
-export function Markdown({ content, isStreaming = false }: Props) {
+export function Markdown({ content, isStreaming = false }: MarkdownProps) {
   if (!content) {
     return isStreaming ? <span className="caret" /> : null;
   }

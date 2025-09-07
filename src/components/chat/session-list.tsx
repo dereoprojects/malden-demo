@@ -2,7 +2,7 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { type Session } from '@/lib/db/dexie';
+import { Session } from '@/lib/schemas';
 
 export function SessionList({
   sessions, activeId, onNew, onPick,

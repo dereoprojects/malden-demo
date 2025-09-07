@@ -1,13 +1,6 @@
-export type ORTextPart = { type: "text"; text: string };
-export type ORImagePart = { type: "image_url"; image_url: { url: string } };
-export type ORContentPart = ORTextPart | ORImagePart;
+import { ORMsg, OpenRouterRequest } from '@/lib/schemas';
 
-export type ORMsg = {
-  role: "system" | "user" | "assistant";
-  content: ORContentPart[];
-};
-
-export function buildOpenRouterReq(model: string, messages: ORMsg[]) {
+export function buildOpenRouterReq(model: string, messages: ORMsg[]): OpenRouterRequest {
   return {
     model,
     messages,
@@ -22,8 +15,17 @@ export const openRouterHeaders = () => ({
   "X-Title": process.env.APP_TITLE ?? "Madlen Chat",
 });
 
+type ErrorDetail = {
+  error?: {
+    message?: string;
+    code?: string;
+    type?: string;
+  };
+  message?: string;
+};
+
 export async function parseORFailure(res: Response) {
-  let detail: any = null;
+  let detail: ErrorDetail | null = null;
   try {
     detail = await res.json();
   } catch {

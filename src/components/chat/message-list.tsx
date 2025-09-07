@@ -1,6 +1,6 @@
 "use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { type Message } from "@/lib/db/dexie";
+import { Message } from "@/lib/schemas";
 import { Markdown } from "@/components/common/markdown";
 import { useEffect, useRef, useState } from "react";
 

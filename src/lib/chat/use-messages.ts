@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { db, type Message } from '@/lib/db/dexie';
+import { db } from '@/lib/db/dexie';
+import { Message } from '@/lib/schemas';
 
 export function useMessages(sessionId?: string) {
   const [messages, setMessages] = useState<Message[]>([]);

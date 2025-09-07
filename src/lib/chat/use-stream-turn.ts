@@ -5,10 +5,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { db } from "@/lib/db/dexie";
 import { ulid } from "@/lib/ids";
-
-type Part =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+import { ORContentPart, StreamTurnOptions } from "@/lib/schemas";
 
 function toastFromCode(code?: string, fallback = "LLM error") {
   switch (code) {
@@ -40,12 +37,7 @@ export function useStreamTurn() {
   const abortRef = useRef<AbortController | null>(null);
   const currentAssistantIdRef = useRef<string | null>(null);
 
-  async function start(opts: {
-    sessionId: string;
-    model: string;
-    userText: string;
-    imageDataUrl?: string;
-  }) {
+  async function start(opts: StreamTurnOptions) {
     const { sessionId, model, userText, imageDataUrl } = opts;
     const now = Date.now();
 
@@ -110,8 +102,8 @@ export function useStreamTurn() {
       return -1;
     })();
 
-    const toParts = (m: (typeof forLlm)[number], idx: number): Part[] => {
-      const parts: Part[] = [];
+    const toParts = (m: (typeof forLlm)[number], idx: number): ORContentPart[] => {
+      const parts: ORContentPart[] = [];
       if (m.content) parts.push({ type: "text", text: m.content });
       // include image ONLY if it's on the last user message
       if (m.imageDataUrl && idx === lastUserIndex) {
@@ -137,11 +129,11 @@ export function useStreamTurn() {
         body: JSON.stringify({ model, messages: payloadMessages }),
         signal: ac.signal,
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       await db.messages.update(assistantId, {
         status: "error",
         errorCode: "network",
-        errorMessage: e?.message || "Network error.",
+        errorMessage: e instanceof Error ? e.message : "Network error.",
         updatedAt: Date.now(),
       });
       toastFromCode("network");
@@ -174,10 +166,10 @@ export function useStreamTurn() {
     const decoder = new TextDecoder();
     let buf = "";
     let partial = "";
-    let flushTimer: any;
+    let flushTimer: NodeJS.Timeout | null = null;
 
     const flush = async () => {
-      clearTimeout(flushTimer);
+      if (flushTimer) clearTimeout(flushTimer);
       flushTimer = setTimeout(async () => {
         await db.messages.update(assistantId, {
           contentDraft: buf,

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-export type FreeModel = { id: string; label: string; supportsImages?: boolean };
+import { FreeModel, ModelsResponseSchema } from "@/lib/schemas";
 
 export function useFreeModels() {
   const [models, setModels] = useState<FreeModel[]>([]);
@@ -17,9 +16,12 @@ export function useFreeModels() {
         const res = await fetch("/api/models/free", { cache: "no-store" });
         if (!res.ok) throw new Error(`models ${res.status}`);
         const j = await res.json();
-        if (mounted) setModels(Array.isArray(j?.data) ? j.data : []);
-      } catch (e: any) {
-        if (mounted) setError(e?.message || "failed_models");
+        if (mounted) {
+          const validated = ModelsResponseSchema.parse(j);
+          setModels(validated.data);
+        }
+      } catch (e: unknown) {
+        if (mounted) setError(e instanceof Error ? e.message : "failed_models");
       } finally {
         if (mounted) setLoading(false);
       }
