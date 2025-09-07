@@ -1,29 +1,39 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { db } from '@/lib/db/dexie';
-import { Session } from '@/lib/schemas';
+// src/lib/chat/useSessions.ts
+"use client";
+
+import { useEffect, useState } from "react";
+import { liveQuery } from "dexie";
+import { db } from "@/lib/db/dexie";
+import { ulid } from "@/lib/ids";
+import type { Session } from "@/lib/schemas";
 
 export function useSessions(activeId?: string | null) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [active, setActive] = useState<Session | null>(null);
 
+  // Live list of sessions, newest first
   useEffect(() => {
-    let mounted = true;
-    const tick = async () => {
-      const ss = await db.sessions.orderBy('updatedAt').reverse().toArray();
-      if (!mounted) return;
-      setSessions(ss);
-      if (activeId && !active) {
-        const found = ss.find(s => s.id === activeId);
-        if (found) {
-          setActive(found);
-        }
-      }
-    };
-    tick();
-    const id = setInterval(tick, 300);
-    return () => { mounted = false; clearInterval(id); };
-  }, [activeId, active]);
+    const observable = liveQuery(() =>
+      db.sessions.orderBy("updatedAt").reverse().toArray()
+    );
+
+    const sub = observable.subscribe({
+      next: setSessions,
+      error: (e) => console.error("useSessions liveQuery error", e),
+    });
+
+    return () => sub.unsubscribe();
+  }, []);
+
+  // Derive `active` from `activeId` and current list
+  useEffect(() => {
+    if (!activeId) {
+      setActive(null);
+      return;
+    }
+    const found = sessions.find((s) => s.id === activeId) || null;
+    setActive(found);
+  }, [activeId, sessions]);
 
   return { sessions, active, setActive };
 }
@@ -31,16 +41,19 @@ export function useSessions(activeId?: string | null) {
 export async function createSession(model: string) {
   const now = Date.now();
   const s: Session = {
-    id: (await import('@/lib/ids')).ulid(),
-    title: 'New Chat',
+    id: ulid(),
+    title: "New Chat",
     model,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
   await db.sessions.add(s);
   return s;
 }
 
 export async function touchSession(id: string, model?: string) {
-  await db.sessions.update(id, { updatedAt: Date.now(), ...(model ? { model } : {}) });
+  await db.sessions.update(id, {
+    updatedAt: Date.now(),
+    ...(model ? { model } : {}),
+  });
 }
