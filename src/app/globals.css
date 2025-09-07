@@ -120,3 +120,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* typing caret */
+@keyframes caret-blink {
+  0%, 40% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret {
+  display: inline-block;
+  vertical-align: baseline;
+  width: 7px;          /* tweak as you like */
+  height: 1em;
+  background: currentColor;
+  animation: caret-blink 1s steps(1, end) infinite;
+}
